@@ -26,17 +26,13 @@ use http_handler::HttpHandler;
 
 async fn client_handler(stream: TcpStream) {
 		let (reader, writer) = &mut (&stream, &stream);
-		let mut reader = BufReader::new(reader);
+		let reader = BufReader::new(reader);
 		let writer = BufWriter::new(writer);
-		// let mut buf = String::new();
-		// vvvvvvv this is working vvvvvvv
-		// match reader.read_line(&mut buf).await {
-		//  	Ok(0) | Err(_) => return,
-		//  	Ok(size) => size,
-		// };
 		if let Ok(mut handler) = HttpHandler::new(reader, writer).await {
 			println!("ok");
-			handler.retrieve_headers().await;
+			if let Err(e) = handler.retrieve_headers().await {
+				eprintln!("{}", e.to_string()); // send error
+			}
 		}
 		// io::copy(&mut reader, writer).await?;
 }
