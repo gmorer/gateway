@@ -25,19 +25,20 @@ mod http_handler;
 use http_handler::HttpHandler;
 
 async fn client_handler(stream: TcpStream) {
-	    let (reader, writer) = &mut (&stream, &stream);
+		let (reader, writer) = &mut (&stream, &stream);
 		let mut reader = BufReader::new(reader);
-		let mut writer = BufWriter::new(writer);
-		let mut buf = String::new();
+		let writer = BufWriter::new(writer);
+		// let mut buf = String::new();
 		// vvvvvvv this is working vvvvvvv
 		// match reader.read_line(&mut buf).await {
-        //     Ok(0) | Err(_) => return,
-        //     Ok(size) => size,
-        // };
-		if let Ok(handler) = HttpHandler::new(&mut reader, &mut writer).await {
-			handler.retrieve_headers();
+		//  	Ok(0) | Err(_) => return,
+		//  	Ok(size) => size,
+		// };
+		if let Ok(mut handler) = HttpHandler::new(reader, writer).await {
+			println!("ok");
+			handler.retrieve_headers().await;
 		}
-	    // io::copy(&mut reader, writer).await?;
+		// io::copy(&mut reader, writer).await?;
 }
 
 async fn main_server(addr: &str, port: &str) -> io::Result<()> {
