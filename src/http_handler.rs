@@ -20,20 +20,23 @@ enum HttpMethod {
 	Delete
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum HttpVersion {
 	Http1,
 	Http11,
 	Http2
 }
 
-#[allow(dead_code)]
-pub struct HttpHandler<R, W> where R: BufRead + Unpin, W: Write {
-	state: HttpState,
-	reader: R,
-	writer: W,
-	headers: HashMap<String, String>,
-	body_length: u32
+pub enum HttpCode {
+	InternalServerError,
+	OK
+}
+
+fn from_http_code(code: HttpCode) -> String {
+	match code {
+		HttpCode::InternalServerError => "500 Internal Server Error",
+		HttpCode::OK => "200 OK"
+	}.into()
 }
 
 fn into_method(met: &str) -> io::Result<HttpMethod> {
@@ -55,12 +58,21 @@ fn into_protocol(prot: &str) -> io::Result<HttpVersion> {
 	}
 }
 
+fn from_protocol(prot: HttpVersion) -> String {
+	match prot {
+		HttpVersion::Http1 => "HTTP/1.0",
+		HttpVersion::Http11 => "HTTP/1.1",
+		HttpVersion::Http2 => "HTTP/2.0"
+	}.into()
+}
+
 fn get_header_args(buf: &str) -> io::Result<(HttpMethod, String, HttpVersion)> {
 	let mut split = buf.split_whitespace();
 	let method = match split.next() {
 		Some(method) => into_method(&method)?,
 		None => return Err(Error::new(ErrorKind::InvalidInput, "HTTP first argument missing"))
 	};
+
 	let path = match split.next() {
 		Some(path) => path.into(),
 		None => return Err(Error::new(ErrorKind::InvalidInput, "HTTP second argument missing"))
@@ -73,10 +85,21 @@ fn get_header_args(buf: &str) -> io::Result<(HttpMethod, String, HttpVersion)> {
 	Ok((method, path, protocol))
 }
 
-impl<R, W> HttpHandler<R, W> where R: BufRead + Unpin, W: Write {
+#[allow(dead_code)]
+pub struct HttpHandler<R, W> where R: BufRead + Unpin, W: Write + Unpin {
+	state: HttpState,
+	reader: R,
+	writer: W,
+	headers: HashMap<String, String>,
+	body_length: u32,
+	protocol: HttpVersion
+}
+
+impl<R, W> HttpHandler<R, W> where R: BufRead + Unpin, W: Write + Unpin {
+	// For HTTP/2 do not parse the first line during the creartion of the handler, or create a reusable function
 	pub async fn new(mut reader: R, writer: W ) -> io::Result<Self> {
 		let mut buf = String::new();
-		let size = match reader.read_line(&mut buf).await {
+		let _size = match reader.read_line(&mut buf).await {
 			Ok(0) | Err(_) => return Err(Error::new(ErrorKind::InvalidInput, "Invalid first input")),
 			Ok(size) => size,
 		};
@@ -89,8 +112,21 @@ impl<R, W> HttpHandler<R, W> where R: BufRead + Unpin, W: Write {
 			headers: HashMap::new(),
 			body_length: 0,
 			reader,
-			writer
+			writer,
+			protocol
 		})
+	}
+
+	pub async fn send_response(&mut self, code: HttpCode, res: String) -> io::Result<u64> {
+		let res_message = res.as_bytes();
+		let res = format!("{} {}\n\rContent-Length: {}\n\r\n\r{}",
+			from_protocol(self.protocol),
+			from_http_code(code),
+			res_message.len(),
+			res
+		);
+		let mut res = res.as_bytes();
+		io::copy(&mut res, &mut self.writer).await
 	}
 
 	pub async fn retrieve_headers(&mut self) -> io::Result<usize> {
@@ -112,7 +148,6 @@ impl<R, W> HttpHandler<R, W> where R: BufRead + Unpin, W: Write {
 			buf.remove(pos);
 			let (key, value) = buf.split_at(pos);
 			self.headers.insert(key.into(), value.into());
-			// println!("---{}ooo", buf);
 			i += 1;
 		}
 		println!("headers: {:?}", self.headers);

@@ -22,16 +22,19 @@ const ADDR: &str = "127.0.0.1";
 const PORT: &str = "8080";
 
 mod http_handler;
-use http_handler::HttpHandler;
+use http_handler::{ HttpHandler, HttpCode };
 
 async fn client_handler(stream: TcpStream) {
 		let (reader, writer) = &mut (&stream, &stream);
 		let reader = BufReader::new(reader);
 		let writer = BufWriter::new(writer);
-		if let Ok(mut handler) = HttpHandler::new(reader, writer).await {
-			println!("ok");
+		if let Ok(mut handler) = HttpHandler::new(reader, writer).await { // implement error code if not valid http header
 			if let Err(e) = handler.retrieve_headers().await {
-				eprintln!("{}", e.to_string()); // send error
+				// unwrap for result warnings
+				handler.send_response(HttpCode::InternalServerError, e.to_string()).await.unwrap();
+			} else {
+				// unwrap for result warnings
+				handler.send_response(HttpCode::OK, "everything works\n".into()).await.unwrap();
 			}
 		}
 		// io::copy(&mut reader, writer).await?;
