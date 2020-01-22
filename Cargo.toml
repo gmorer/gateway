@@ -4,21 +4,9 @@ version = "0.1.0"
 authors = ["gmorer <gmorer@pm.me>"]
 edition = "2018"
 
-[lib]
-name = "services"
-path = "services/lib.rs"
-
 [[bin]]
 name = "archi"
 path = "src/archi/main.rs"
-
-[[bin]]
-name = "microservice_exemple"
-path = "src/micro/main.rs"
-
-[[bin]]
-name = "client_exemple"
-path = "src/client/main.rs"
 
 [dependencies]
 tokio = { version = "0.2", features = ["full"] }
@@ -31,3 +19,6 @@ actix-rt = "1"
 sled = "0.30.3" # user database
 serde_json = "1.0"
 json = "*"
+
+[dev-dependencies]
+lazy_static = "1.4.0"

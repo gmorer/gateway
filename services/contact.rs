@@ -1,4 +1,4 @@
-
+#[allow(dead_code)]
 pub struct Contact {
 	name: String
 }
