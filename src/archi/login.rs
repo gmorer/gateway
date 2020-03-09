@@ -19,6 +19,8 @@ mod answer {
 	pub const ALREADYEXIST: &str = "Username already exist";
 }
 
+/* Return a refresh token and an access token */
+// TODO: hash password
 async fn authentification(db: web::Data<Tree>, user: web::Json<User>) -> impl Responder {
 	let password = match db.get(&user.username).unwrap_or(None) {
 		Some(d) => d,
@@ -31,6 +33,8 @@ async fn authentification(db: web::Data<Tree>, user: web::Json<User>) -> impl Re
 	}
 }
 
+/* Return a refresh token and an access token */
+// TODO: hash passowrd
 async fn join(db: web::Data<Tree>, user: web::Json<User>) -> Result<HttpResponse, Error> {
 	match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(ErrorMsg::into_internal_error)? {
 		Some(_) => HttpResponse::Conflict().json(ErrorMsg::new(answer::ALREADYEXIST)).await,
@@ -41,7 +45,7 @@ async fn join(db: web::Data<Tree>, user: web::Json<User>) -> Result<HttpResponse
 	}
 }
 
-// rework this one get username in body or in params
+/* Delete user */
 async fn delete(db: web::Data<Tree>, user: web::Json<User>) -> Result<HttpResponse, Error> {
 	let password = match db.get(&user.username).unwrap_or(None) {
 		Some(d) => d,
@@ -56,6 +60,7 @@ async fn delete(db: web::Data<Tree>, user: web::Json<User>) -> Result<HttpRespon
 	}
 }
 
+/* List all users for debug */
 async fn list(db: web::Data<Tree>) -> impl Responder {
 	let result: Vec<String> = db.iter().filter_map(Result::ok)
 		.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))

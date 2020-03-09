@@ -50,6 +50,7 @@ pub fn handle_json_error(cfg: actix_web::web::JsonConfig) -> actix_web::web::Jso
 	})
 }
 
+#[allow(dead_code)]
 pub struct TestCall<'a> {
 	pub uri: &'a str,
 	pub method: Method,
@@ -58,11 +59,13 @@ pub struct TestCall<'a> {
 	pub response: String
 }
 
+#[allow(dead_code)]
 pub fn build_test<'a>(uri: &'a str, method: Method, body: &'a str, status: StatusCode, response: String) -> TestCall<'a> {
 	TestCall { uri, method, body: body.into(), status, response: response.into()}
 }
 
 // TODO: Option for body, accept empty body
+#[allow(dead_code)]
 pub async fn do_tests<'a, F>(service: F, tests: Vec<TestCall<'a>>) where F: HttpServiceFactory + 'static {
 	let mut app = test::init_service(
 		App::new().service(service)

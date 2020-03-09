@@ -5,6 +5,8 @@ mod utils;
 mod login;
 use login::login;
 
+mod security;
+
 const DATABASE_PATH: &str = "db";
 const ADDR: &str = "127.0.0.1:8088";
 
@@ -26,6 +28,8 @@ fn service404() -> Resource {
 async fn main() -> std::io::Result<()> {
 
 	let db = sled::open(DATABASE_PATH).expect("Cannot open database path");
+	println!("example AccessToken: {}", security::create_token("toto".to_string(), security::TokenType::AccessToken));
+	println!("example RefreshToken: {}", security::create_token("toto".to_string(), security::TokenType::RefreshToken));
 	println!("listening on {}.", ADDR);
 	HttpServer::new(move || {
 		App::new()
