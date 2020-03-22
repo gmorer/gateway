@@ -6,6 +6,8 @@ mod login;
 use login::login;
 
 mod security;
+mod middlewares;
+use middlewares::{ Jwt };
 
 const DATABASE_PATH: &str = "db";
 const ADDR: &str = "127.0.0.1:8088";
@@ -33,6 +35,7 @@ async fn main() -> std::io::Result<()> {
 	println!("listening on {}.", ADDR);
 	HttpServer::new(move || {
 		App::new()
+		.wrap(Jwt::new("lol", db.clone()))
 			.service(login(db.clone(), "/login"))
 			.default_service(service404())
 	})
