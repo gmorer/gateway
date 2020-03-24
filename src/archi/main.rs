@@ -2,8 +2,8 @@ use actix_web::{ App, HttpServer, HttpResponse, Responder, web, guard, Resource 
 
 mod utils;
 
-mod login;
-use login::login;
+// mod login;
+// use login::login;
 
 mod security;
 mod middlewares;
@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
 	HttpServer::new(move || {
 		App::new()
 		.wrap(Jwt::new("lol", db.clone()))
-			.service(login(db.clone(), "/login"))
+			// .service(login(db.clone(), "/login"))
 			.default_service(service404())
 	})
 	.bind(ADDR)?

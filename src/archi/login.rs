@@ -5,69 +5,6 @@ use std::str;
 
 use crate::utils::{ handle_json_error, ErrorMsg };
 
-#[derive(Serialize, Deserialize)]
-struct User {
-	username: String,
-	password: String
-}
-
-mod answer {
-	pub const GOODCREDENTIAL: &str = "Good credentials";
-	pub const USERCREATED: &str = "User created";
-	pub const USERDELETED: &str = "User deleted";
-	pub const INVALIDCREDENTIAL: &str = "Invalid credentials";
-	pub const ALREADYEXIST: &str = "Username already exist";
-}
-
-/* Return a refresh token and an access token */
-// TODO: hash password
-async fn authentification(db: web::Data<Tree>, user: web::Json<User>) -> impl Responder {
-	let password = match db.get(&user.username).unwrap_or(None) {
-		Some(d) => d,
-		None => return HttpResponse::Unauthorized().json(ErrorMsg::new(answer::INVALIDCREDENTIAL))
-	};
-	if password != user.password {
-		HttpResponse::Unauthorized().json(ErrorMsg::new(answer::INVALIDCREDENTIAL))
-	} else {
-		HttpResponse::Ok().body(answer::GOODCREDENTIAL)
-	}
-}
-
-/* Return a refresh token and an access token */
-// TODO: hash passowrd
-async fn join(db: web::Data<Tree>, user: web::Json<User>) -> Result<HttpResponse, Error> {
-	match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(ErrorMsg::into_internal_error)? {
-		Some(_) => HttpResponse::Conflict().json(ErrorMsg::new(answer::ALREADYEXIST)).await,
-		None => {
-			db.flush_async().await.map_err(ErrorMsg::into_internal_error)?;
-			Ok(HttpResponse::Ok().body(answer::USERCREATED))
-		}
-	}
-}
-
-/* Delete user */
-async fn delete(db: web::Data<Tree>, user: web::Json<User>) -> Result<HttpResponse, Error> {
-	let password = match db.get(&user.username).unwrap_or(None) {
-		Some(d) => d,
-		None => return HttpResponse::Unauthorized().finish().await
-	};
-	if password != user.password {
-		HttpResponse::Unauthorized().finish().await
-	} else {
-		db.remove(&user.username).map_err(ErrorMsg::into_internal_error)?; 
-		db.flush_async().await.map_err(ErrorMsg::into_internal_error)?;
-		Ok(HttpResponse::Ok().body(answer::USERDELETED))
-	}
-}
-
-/* List all users for debug */
-async fn list(db: web::Data<Tree>) -> impl Responder {
-	let result: Vec<String> = db.iter().filter_map(Result::ok)
-		.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))
-		.collect();
-	HttpResponse::Ok().json(result)
-}
-
 pub fn login(db: Db, path: &str) -> Scope {
 	let db = db.open_tree(path).expect("Cannot create/open the users db");
 	// let data = web::Data::new(db);

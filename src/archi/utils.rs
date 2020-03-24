@@ -6,10 +6,11 @@
 use actix_web::{ HttpResponse, error, test, App };
 use actix_web::error::JsonPayloadError::{ Overflow, ContentType, Deserialize, Payload };
 use actix_web::http::{ StatusCode, Method };
-use actix_web::dev::HttpServiceFactory;
+use actix_web::dev::{ HttpServiceFactory, ServiceRequest };
 use actix_web::dev::Service;
 use actix_web::web::Bytes;
 use serde::Serialize;
+use bytes::BytesMut;
 
 #[derive(Serialize)]
 pub struct ErrorMsg {
@@ -96,3 +97,12 @@ pub async fn do_tests<'a, F>(service: F, tests: Vec<TestCall<'a>>) where F: Http
 	};
 	// tests.forEach
 }
+
+// pub async fn parse_body<T>(req: ServiceRequest) -> serde_json::Result<T> where T: Serialize {
+// 	let mut body = BytesMut::new();
+// 	let mut stream = req.take_payload();
+// 	while let Some(chunk) = stream.next().await {
+// 		body.extend_from_slice(&chunk?);
+// 	}
+// 	serde_json::from_str(body)
+// }
