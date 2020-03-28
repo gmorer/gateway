@@ -8,6 +8,10 @@ use tokio_serde::formats::Json;
 use tokio::time::delay_for;
 use std::time::Duration;
 
+/*
+	modules : method : body
+*/
+
 #[derive(Clone)]
 struct ContactService();
 

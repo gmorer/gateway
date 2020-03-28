@@ -4,11 +4,11 @@ use hyper::{Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
 mod utils;
-
+mod proto;
 // mod login;
 // use login::login;
 
-// mod security;
+mod security;
 // mod middlewares;
 // use middlewares::{ Jwt };
 
@@ -36,8 +36,11 @@ async fn shutdown_signal() {
 		.expect("failed to install CTRL+C signal handler");
 }
 
-async fn hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-	Ok(Response::new("Hello, World".into()))
+async fn hello_world(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+	match proto::Request::froom(req) {
+		Ok(req) => Ok(Response::new("Hello, World".into())),
+		Err(res) => Ok(res.into())
+	}
 }
 
 #[tokio::main]
