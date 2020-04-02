@@ -8,7 +8,7 @@ use hyper::service::{make_service_fn, service_fn};
 // mod login;
 // use login::login;
 
-// mod secur/ity;
+// mod security;
 // mod middlewares;
 // use middlewares::{ Jwt };
 
@@ -33,7 +33,7 @@ async fn login_sample(_req: proto::Request) -> proto::Response {
 }
 
 fn init_login() -> HashMap<String, modules::CallFn> {
-	let mut result = HashMap::new();
+	let mut result: HashMap<String, modules::CallFn> = HashMap::new();
 	result.insert("test".into(), &login_sample);
 	result
 }
@@ -51,22 +51,21 @@ async fn main() {
 	
 	// A `Service` is needed for every connection, so this
 	// creates one from our `hello_world` function.
-	let new_service = make_service_fn(|_conn| {
+	let new_service = make_service_fn(|_conn| async {
 		// service_fn converts our function into a `Service`
-		async {
-			Ok::<_, GenericError>(service_fn(move |req| {
+			Ok::<_, GenericError>(service_fn(|req| {
 				handle_req(&modules, req)
 			}))
-		});
-	}
+		}
+	);
 	
-	let server = Server::bind(&addr).serve(new_service);
 	println!("listening on {}.", ADDR);
+	let server = Server::bind(&addr).serve(new_service).await;
 	// let graceful = server.with_graceful_shutdown(shutdown_signal());
 	// if let Err(e) = graceful.await {
 	// 	eprintln!("server error: {}", e);
 	// }
-	if let Err(e) = server.await {
-		eprintln!("server error: {}", e);
-	}
+	// if let Err(e) = server.await {
+	// 	eprintln!("server error: {}", e);
+	// }
 }

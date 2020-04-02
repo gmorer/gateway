@@ -8,7 +8,7 @@ pub enum Error {
 	Internal(String)
 }
 
-pub type CallFn = fn(Request) -> Pin<Box<dyn Future<Output = Response>>>;
+pub type CallFn = &'static fn(Request) -> Pin<Box<dyn Future<Output = Response> + Send>>;
 // pub type CallFn = dyn Fn(Request) -> Response;
 
 // TODO: distant module
@@ -28,7 +28,7 @@ pub struct Modules {
 
 impl Modules {
 	pub fn new() -> Self {
-		let static_modules: HashMap<String, HashMap<String, CallFn>> = vec!();
+		let static_modules: HashMap<String, HashMap<String, CallFn>> = HashMap::new();
 		Modules {
 			static_modules,
 			// distant_modules: vec!()
@@ -36,7 +36,7 @@ impl Modules {
 	}
 
 	pub fn add_static(&mut self, name: String, method_map: HashMap<String, CallFn>) {
-		if self.static_modules.contains_key(name) { 
+		if self.static_modules.contains_key(&name) { 
 			panic!("Cannot insert internal module [{}]: 2 internal module with the same name", name);
 		}
 		// if self.distant_modules.contains_key(name) {
