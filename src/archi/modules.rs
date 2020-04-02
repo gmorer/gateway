@@ -2,13 +2,15 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use crate::proto::{ Response, Request };
+use std::marker::Unpin;
 
 pub enum Error {
 	NotFound,
 	Internal(String)
 }
 
-pub type CallFn = &'static fn(Request) -> Pin<Box<dyn Future<Output = Response> + Send>>;
+pub type CallFnRet = Pin<Box<dyn Future<Output = Response> + Send>>;
+pub type CallFn = fn(Request) -> CallFnRet;
 // pub type CallFn = dyn Fn(Request) -> Response;
 
 // TODO: distant module
