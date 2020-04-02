@@ -3,8 +3,7 @@ use hyper::{ Body };
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
-	module: String, // TODO: Remove this and passe it in a tuple
-	method: String,
+	pub method: String,
 	body_len: u64,
 	body: Option<String>, /* or stream */
 	username: Option<String> /* is the user connected */
@@ -12,7 +11,7 @@ pub struct Request {
 }
 
 impl Request {
-	pub fn froom(req: hyper::Request<Body>) -> Result<Self, Response> {
+	pub fn froom(req: hyper::Request<Body>) -> Result<(String, Self), Response> {
 		let path = &req.uri().path()[1..];
 		let ( module, method ) = match path.find('/') {
 			Some( index ) => {
@@ -48,13 +47,12 @@ impl Request {
 		} else {
 			None
 		};
-		Ok (Request {
-			module,
+		Ok ((module, Request {
 			method,
 			body,
 			body_len,
 			username
-		})
+		}))
 	}
 } 
 
@@ -66,7 +64,7 @@ pub struct Response {
 }
 
 impl Response {
-	fn new(no: &str) -> Self {
+	pub fn new(no: &str) -> Self {
 		Response {
 			code: 400,
 			body_len: 54,
