@@ -1,11 +1,9 @@
-use std::convert::Infallible;
-use std::collections::HashMap;
 use hyper::{Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
 
-// mod utils;
-// mod login;
+mod utils;
+mod login;
 // use login::login;
 
 // mod security;
@@ -30,27 +28,15 @@ async fn shutdown_signal() {
 
 async fn handle_req(modules: modules::Modules, req: Request<Body>) -> Result<Response<Body>> {
 	match proto::Request::froom(req) {
-		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new("welllwellwell")).into()),
+		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new(400, "welllwellwell")).into()), // TODO: Real error handler
 		Err(res) => Ok(res.into())
 	}
-}
-
-fn login_sample(_req: proto::Request) -> modules::CallFnRet {
-	Box::pin(async move {
-		proto::Response::new("SOme response from the future")
-	})
-}
-
-fn init_login() -> HashMap<String, modules::CallFn> {
-	let mut result: HashMap<String, modules::CallFn> = HashMap::new();
-	result.insert("test".into(), login_sample);
-	result
 }
 
 #[tokio::main]
 async fn main() {
 	let mut modules = modules::Modules::new();
-	modules.add_static("auth".to_string(), init_login());
+	modules.add_static("auth".to_string(), login::init_login());
 	// We'll bind to 127.0.0.1:3000
 	let addr = ADDR.parse().expect("Invalid server address");
 	// let db = sled::open(DATABASE_PATH).expect("Cannot open database path"); // put this in an option global

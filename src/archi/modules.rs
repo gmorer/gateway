@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use crate::proto::{ Response, Request };
-use std::marker::Unpin;
 
 pub enum Error {
 	NotFound,
