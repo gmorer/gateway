@@ -3,30 +3,33 @@
 	TODO: create a lib
 */
 
-use serde::Serialize;
+// use serde::Serialize;
 // use hyper::{ Request, Body };
-use crate::proto::{ Request };
+use crate::proto::{ Request, Response, Code };
 // use futures_util::{stream, StreamExt};
 use bytes::buf::ext::BufExt;
 
-#[derive(Serialize)]
-pub struct ErrorMsg {
-	error: String
+// #[derive(Serialize)]
+// pub struct ErrorMsg {
+// 	error: String
+// }
+
+// impl ErrorMsg {
+// 	pub fn new<T>(msg: T) -> Self where T: ToString {
+// 		Self { error: msg.to_string() }
+// 	}
+	
+// 	pub fn to_json_string(&self) ->  String {
+// 		json_error(&self.error)
+// 	}
+// }
+
+pub fn json_error<T>(e: T) -> String where T: std::fmt::Display {
+	format!("{{\"error\":\"{}\"}}", e)
 }
 
-impl ErrorMsg {
-	pub fn new<T>(msg: T) -> Self where T: ToString {
-		Self { error: msg.to_string() }
-	}
-	
-	#[allow(dead_code)]
-	pub fn to_json_string(&self) ->  String {
-		format!("{{\"error\":\"{}\"}}", self.error)
-	}
-
-	// pub fn into_internal_error<T>(e: T) -> HttpResponse where T: ToString {
-	// 	HttpResponse::InternalServerError().json(ErrorMsg::new(e))
-	// }
+pub fn into_internal_error<T>(e: T) -> Response where T: std::fmt::Display {
+	Response::new(Code::InternalServerError, &json_error(e))
 }
 
 // pub fn handle_json_error(cfg: actix_web::web::JsonConfig) -> actix_web::web::JsonConfig

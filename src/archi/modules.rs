@@ -8,7 +8,8 @@ pub enum Error {
 	Internal(String)
 }
 
-pub type CallFnRet = Pin<Box<dyn Future<Output = Response> + Send>>;
+// this result is for the use of '?' in the callback functions 
+pub type CallFnRet = Pin<Box<dyn Future<Output = Result<Response, Response>> + Send>>;
 pub type CallFn = fn(Request) -> CallFnRet;
 // pub type CallFn = dyn Fn(Request) -> Response;
 
@@ -49,7 +50,7 @@ impl Modules {
 	pub async fn call(&self, module: String, req: Request) -> Result<Response, Error> {
 		if let Some(module) = self.static_modules.get(&module) {
 			match module.get(&req.method) {
-				Some(f) => Ok(f(req).await),
+				Some(f) => Ok(f(req).await.unwrap_or_else(|e| e)),
 				None => Err(Error::NotFound)
 			}
 		} else { Err(Error::NotFound) }

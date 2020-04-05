@@ -26,9 +26,10 @@ async fn shutdown_signal() {
 		.expect("failed to install CTRL+C signal handler");
 }
 
+// TODO handle content encoding based on the Accept header comming
 async fn handle_req(modules: modules::Modules, req: Request<Body>) -> Result<Response<Body>> {
 	match proto::Request::froom(req) {
-		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new(400, "welllwellwell")).into()), // TODO: Real error handler
+		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new(proto::Code::NotFound, "404 not found")).into()), // TODO: Real error handler
 		Err(res) => Ok(res.into())
 	}
 }
@@ -36,10 +37,10 @@ async fn handle_req(modules: modules::Modules, req: Request<Body>) -> Result<Res
 #[tokio::main]
 async fn main() {
 	let mut modules = modules::Modules::new();
-	modules.add_static("auth".to_string(), login::init_login());
+	let db = sled::open(DATABASE_PATH).expect("Cannot open database path"); // put this in an option global
+	modules.add_static("auth".to_string(), login::init_login(db));
 	// We'll bind to 127.0.0.1:3000
 	let addr = ADDR.parse().expect("Invalid server address");
-	// let db = sled::open(DATABASE_PATH).expect("Cannot open database path"); // put this in an option global
 	// println!("example AccessToken: {}", security::create_token("toto".to_string(), security::TokenType::AccessToken));
 	// println!("example RefreshToken: {}", security::create_token("toto".to_string(), security::TokenType::RefreshToken));
 

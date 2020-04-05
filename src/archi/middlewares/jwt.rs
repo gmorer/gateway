@@ -17,14 +17,6 @@ use crate::utils::{ /*parse_body,*/ ErrorMsg };
 
 pub struct Jwt<'a>(Rc<Inner<'a>>);
 
-mod answer {
-	pub const GOODCREDENTIAL: &str = "Good credentials";
-	pub const USERCREATED: &str = "User created";
-	pub const USERDELETED: &str = "User deleted";
-	pub const INVALIDCREDENTIAL: &str = "Invalid credentials";
-	pub const ALREADYEXIST: &str = "Username already exist";
-}
-
 /* Return a refresh token and an access token */
 // TODO: hash password
 async fn auth(req: ServiceRequest, db: Tree) -> Result<HttpResponse, Error> {
@@ -50,10 +42,10 @@ async fn join(req: ServiceRequest, db: Tree) -> Result<HttpResponse, Error> {
 		Ok(user) => user,
 		Err(e) => return Ok(HttpResponse::BadRequest().json(ErrorMsg { error: e.to_string() }))
 	};
-	match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(ErrorMsg::into_internal_error)? {
+	match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(into_internal_error)? {
 		Some(_) => HttpResponse::Conflict().json(ErrorMsg::new(answer::ALREADYEXIST)).await,
 		None => {
-			db.flush_async().await.map_err(ErrorMsg::into_internal_error)?;
+			db.flush_async().await.map_err(into_internal_error)?;
 			Ok(HttpResponse::Ok().body(answer::USERCREATED))
 		}
 	}
@@ -72,8 +64,8 @@ async fn delete(req: ServiceRequest, db: Tree) -> ServiceResponse {
 	if password != user.password {
 		HttpResponse::Unauthorized().finish().await
 	} else {
-		db.remove(&user.username).map_err(ErrorMsg::into_internal_error)?;
-		db.flush_async().await.map_err(ErrorMsg::into_internal_error)?;
+		db.remove(&user.username).map_err(into_internal_error)?;
+		db.flush_async().await.map_err(into_internal_error)?;
 		Ok(HttpResponse::Ok().body(answer::USERDELETED))
 	}
 	println!("Hey");

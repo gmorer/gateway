@@ -1,11 +1,12 @@
 use sled::{ Db, Tree };
 use serde::{Deserialize, Serialize};
 use std::str;
-use crate::proto::{ Response, Request };
-use crate::modules::{ CallFnRet, CallFn };
 use std::collections::HashMap;
+use once_cell::sync::OnceCell;
 
-use crate::utils::{ parse_body };
+use crate::proto::{ Response, Request, Code };
+use crate::modules::{ CallFnRet, CallFn };
+use crate::utils::{ parse_body, into_internal_error, json_error };
 
 #[derive(Serialize, Deserialize, Debug)]
 struct User {
@@ -13,36 +14,55 @@ struct User {
 	password: String
 }
 
+#[allow(dead_code)]
+mod answer {
+	pub const GOODCREDENTIAL: &str = "Good credentials";
+	pub const USERCREATED: &str = "User created";
+	pub const USERDELETED: &str = "User deleted";
+	pub const INVALIDCREDENTIAL: &str = "Invalid credentials";
+	pub const ALREADYEXIST: &str = "Username already exist";
+}
+
+// users_db(None) to get the db instance and users_db(db) to initalize it when not initilized
+fn users_db(db: Option<Db>) -> &'static Tree {
+	static INSTANCE: OnceCell<Tree> = OnceCell::new();
+	INSTANCE.get_or_init(|| {
+		db.expect("cannot initiat the Tree without Db").open_tree("users").expect("Cannot create/open the users db")
+	})
+}
+
 fn login_sample(req: Request) -> CallFnRet {
 	Box::pin(async move {
 		let user: User = match parse_body(req).await {
 			Ok(user) => user,
-			Err(e) => return Response::new(400, "error")
+			Err(e) => return Ok(Response::new(Code::BadRequest, &json_error(e)))
 		};
-		Response::new(200, &format!("use created: {:?}", user))
+		let db = users_db(None);
+		match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(into_internal_error)? {
+			Some(_) => Ok(Response::new(Code::Conflict, &json_error(answer::ALREADYEXIST))),
+			None => {
+				db.flush_async().await.map_err(into_internal_error)?;
+				Ok(Response::new(Code::OK, answer::USERCREATED))
+			}
+		}
 	})
 
-	// match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(ErrorMsg::into_internal_error)? {
-	// 	Some(_) => HttpResponse::Conflict().json(ErrorMsg::new(answer::ALREADYEXIST)).await,
-	// 	None => {
-	// 		db.flush_async().await.map_err(ErrorMsg::into_internal_error)?;
-	// 	}
-	// }
 }
 
 // pub fn login(db: Db, path: &str) -> Scope {
-// 	let db = db.open_tree(path).expect("Cannot create/open the users db");
-// 	// let data = web::Data::new(db);
-// 	web::scope(path)
-// 		.data(db)
-// 		.route("/list", web::get().to(list))
-// 		.app_data(web::Json::<User>::configure(handle_json_error))
-// 		.route("/auth", web::post().to(authentification))
-// 		.route("/join", web::post().to(join))
-// 		.route("/delete", web::delete().to(delete))
-// }
+	// 	// let data = web::Data::new(db);
+	// 	web::scope(path)
+	// 		.data(db)
+	// 		.route("/list", web::get().to(list))
+	// 		.app_data(web::Json::<User>::configure(handle_json_error))
+	// 		.route("/auth", web::post().to(authentification))
+	// 		.route("/join", web::post().to(join))
+	// 		.route("/delete", web::delete().to(delete))
+	// }
 
-pub fn init_login() -> HashMap<String, CallFn> {
+pub fn init_login(db: Db) -> HashMap<String, CallFn> {
+	// initialize the users' db
+	users_db(Some(db));
 	let mut result: HashMap<String, CallFn> = HashMap::new();
 	result.insert("join".into(), login_sample);
 	result
