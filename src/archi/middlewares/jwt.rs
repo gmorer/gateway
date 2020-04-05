@@ -73,12 +73,6 @@ async fn delete(req: ServiceRequest, db: Tree) -> ServiceResponse {
 }
 
 /* List all users for debug */
-async fn list(db: Tree) -> Result<HttpResponse, Error> {
-	let result: Vec<String> = db.iter().filter_map(Result::ok)
-		.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))
-		.collect();
-	Ok(HttpResponse::Ok().json(result))
-}
 
 
 /* Midleware code part */

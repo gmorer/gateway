@@ -100,8 +100,8 @@ pub fn into_internal_error<T>(e: T) -> Response where T: std::fmt::Display {
 
 pub async fn parse_body<T>(req: Request) -> Result<T, String> where T: serde::de::DeserializeOwned {
 	if let Some(body) = req.body {
-		let whole_body = hyper::body::aggregate(body).await.map_err(|e| e.to_string())?;
-		let data = serde_json::from_reader(whole_body.reader()).map_err(|e| e.to_string())?;
+		let whole_body = hyper::body::aggregate(body).await.map_err(|e| format!("Invalid body: {}", e))?;
+		let data = serde_json::from_reader(whole_body.reader()).map_err(|e| format!("Invalid body: {}", e))?;
 		Ok(data)
 	} else {
 		Err("No body in the request".to_string())

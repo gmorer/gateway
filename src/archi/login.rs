@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::str;
 use std::collections::HashMap;
 use once_cell::sync::OnceCell;
+use futures::future;
 
 use crate::proto::{ Response, Request, Code };
 use crate::modules::{ CallFnRet, CallFn };
@@ -28,6 +29,16 @@ fn users_db(db: Option<Db>) -> &'static Tree {
 	static INSTANCE: OnceCell<Tree> = OnceCell::new();
 	INSTANCE.get_or_init(|| {
 		db.expect("cannot initiat the Tree without Db").open_tree("users").expect("Cannot create/open the users db")
+	})
+}
+
+fn list(_req: Request) -> CallFnRet {
+	Box::pin(async move {
+		let db = users_db(None);
+		let result: Vec<String> = db.iter().filter_map(Result::ok)
+			.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))
+			.collect();
+		Ok(Response::new(Code::OK, &serde_json::to_string(&result).map_err(into_internal_error)?))
 	})
 }
 
@@ -65,6 +76,7 @@ pub fn init_login(db: Db) -> HashMap<String, CallFn> {
 	users_db(Some(db));
 	let mut result: HashMap<String, CallFn> = HashMap::new();
 	result.insert("join".into(), login_sample);
+	result.insert("list".into(), list);
 	result
 }
 

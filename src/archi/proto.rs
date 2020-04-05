@@ -1,6 +1,7 @@
 use serde::{ Deserialize, Serialize };
 use hyper::{ Body };
 use crate::utils::{ json_error, into_internal_error };
+use crate::security::{ get_username };
 
 #[derive(Debug)]
 pub struct Request {
@@ -34,11 +35,7 @@ impl Request {
 				}
 			}
 		};
-		let username = if req.headers().contains_key("Authorization") {
-			None // username from token
-		} else {
-			None
-		};
+		let username = get_username(&req).map_err(|e| Response::new(Code::BadRequest, &json_error(e)))?;
 		let ( body_len, body ) = match req.headers().get("Content-Length") {
 			Some( value ) => {
 				let body_len = value.to_str().map_err(into_internal_error)?.parse().map_err(into_internal_error)?;

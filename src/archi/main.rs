@@ -6,7 +6,7 @@ mod utils;
 mod login;
 // use login::login;
 
-// mod security;
+mod security;
 // mod middlewares;
 // use middlewares::{ Jwt };
 
@@ -41,8 +41,8 @@ async fn main() {
 	modules.add_static("auth".to_string(), login::init_login(db));
 	// We'll bind to 127.0.0.1:3000
 	let addr = ADDR.parse().expect("Invalid server address");
-	// println!("example AccessToken: {}", security::create_token("toto".to_string(), security::TokenType::AccessToken));
-	// println!("example RefreshToken: {}", security::create_token("toto".to_string(), security::TokenType::RefreshToken));
+	println!("example AccessToken: {}", security::create_token("toto".to_string(), security::TokenType::AccessToken));
+	println!("example RefreshToken: {}", security::create_token("toto".to_string(), security::TokenType::RefreshToken));
 
 	
 	let new_service = make_service_fn(move |_conn| {
