@@ -29,7 +29,7 @@ async fn shutdown_signal() {
 // TODO handle content encoding based on the Accept header comming
 async fn handle_req(modules: modules::Modules, req: Request<Body>) -> Result<Response<Body>> {
 	match proto::Request::froom(req) {
-		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new(proto::Code::NotFound, "404 not found")).into()), // TODO: Real error handler
+		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new(proto::Code::NotFound, "404 not found")).into()),
 		Err(res) => Ok(res.into())
 	}
 }
@@ -47,6 +47,7 @@ async fn main() {
 	
 	let new_service = make_service_fn(move |_conn| {
 		let modules = modules.clone();
+		// TODO: variable with the client loged or not ( stronger than refresh token )
 		async move {
 			Ok::<_, GenericError>(service_fn(move |req| {
 				handle_req(modules.clone(), req)

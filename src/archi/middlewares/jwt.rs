@@ -18,24 +18,6 @@ use crate::utils::{ /*parse_body,*/ ErrorMsg };
 pub struct Jwt<'a>(Rc<Inner<'a>>);
 
 /* Return a refresh token and an access token */
-// TODO: hash password
-async fn auth(req: ServiceRequest, db: Tree) -> Result<HttpResponse, Error> {
-	let user: User = match parse_body(req).await {
-		Ok(user) => user,
-		Err(e) => return Ok(HttpResponse::BadRequest().json(ErrorMsg { error: e.to_string() }))
-	};
-	let password = match db.get(&user.username).unwrap_or(None) {
-		Some(d) => d,
-		None => return Ok(HttpResponse::Unauthorized().json(ErrorMsg::new(answer::INVALIDCREDENTIAL)))
-	};
-	if password != user.password {
-		Ok(HttpResponse::Unauthorized().json(ErrorMsg::new(answer::INVALIDCREDENTIAL)))
-	} else {
-		Ok(HttpResponse::Ok().body(answer::GOODCREDENTIAL))
-	}
-}
-
-/* Return a refresh token and an access token */
 // TODO: hash passowrd
 async fn join(req: ServiceRequest, db: Tree) -> Result<HttpResponse, Error> {
 	let user: User = match parse_body(req).await {
@@ -51,26 +33,6 @@ async fn join(req: ServiceRequest, db: Tree) -> Result<HttpResponse, Error> {
 	}
 }
 
-/* Delete user */
-async fn delete(req: ServiceRequest, db: Tree) -> ServiceResponse {
-	let user: User = match parse_body(req).await {
-		Ok(user) => user,
-		Err(e) => return Ok(HttpResponse::BadRequest().json(ErrorMsg { error: e.to_string() }))
-	};
-	let password = match db.get(&user.username).unwrap_or(None) {
-		Some(d) => d,
-		None => return HttpResponse::Unauthorized().finish().await
-	};
-	if password != user.password {
-		HttpResponse::Unauthorized().finish().await
-	} else {
-		db.remove(&user.username).map_err(into_internal_error)?;
-		db.flush_async().await.map_err(into_internal_error)?;
-		Ok(HttpResponse::Ok().body(answer::USERDELETED))
-	}
-	println!("Hey");
-	req.into_response(HttpResponse::Ok().body(answer::USERDELETED))
-}
 
 /* List all users for debug */
 

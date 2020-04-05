@@ -32,17 +32,28 @@ fn users_db(db: Option<Db>) -> &'static Tree {
 	})
 }
 
-fn list(_req: Request) -> CallFnRet {
+/* Return a refresh token and an access token */
+// TODO: hash password
+fn auth(req: Request) -> CallFnRet {
 	Box::pin(async move {
+		let user: User = match parse_body(req).await {
+			Ok(user) => user,
+			Err(e) => return Ok(Response::new(Code::BadRequest, &json_error(e)))
+		};
 		let db = users_db(None);
-		let result: Vec<String> = db.iter().filter_map(Result::ok)
-			.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))
-			.collect();
-		Ok(Response::new(Code::OK, &serde_json::to_string(&result).map_err(into_internal_error)?))
+		let password = match db.get(&user.username).unwrap_or(None) {
+			Some(d) => d,
+			None => return Ok(Response::new(Code::Unauthorized, &json_error(answer::INVALIDCREDENTIAL)))
+		};
+		if password != user.password {
+			Ok(Response::new(Code::Unauthorized, &json_error(answer::INVALIDCREDENTIAL)))
+		} else {
+			Ok(Response::new(Code::OK, answer::GOODCREDENTIAL))
+		}
 	})
 }
 
-fn login_sample(req: Request) -> CallFnRet {
+fn join(req: Request) -> CallFnRet {
 	Box::pin(async move {
 		let user: User = match parse_body(req).await {
 			Ok(user) => user,
@@ -60,23 +71,46 @@ fn login_sample(req: Request) -> CallFnRet {
 
 }
 
-// pub fn login(db: Db, path: &str) -> Scope {
-	// 	// let data = web::Data::new(db);
-	// 	web::scope(path)
-	// 		.data(db)
-	// 		.route("/list", web::get().to(list))
-	// 		.app_data(web::Json::<User>::configure(handle_json_error))
-	// 		.route("/auth", web::post().to(authentification))
-	// 		.route("/join", web::post().to(join))
-	// 		.route("/delete", web::delete().to(delete))
-	// }
+/* Delete user */
+fn delete(req: Request) -> CallFnRet {
+	Box::pin(async move {
+		let user: User = match parse_body(req).await {
+			Ok(user) => user,
+			Err(e) => return Ok(Response::new(Code::BadRequest, &json_error(e)))
+		};
+		let db = users_db(None);
+		let password = match db.get(&user.username).unwrap_or(None) {
+			Some(d) => d,
+			None => return Ok(Response::new(Code::Unauthorized, answer::INVALIDCREDENTIAL))
+		};
+		if password != user.password {
+			Ok(Response::new(Code::Unauthorized, answer::INVALIDCREDENTIAL))
+		} else {
+			db.remove(&user.username).map_err(into_internal_error)?;
+			db.flush_async().await.map_err(into_internal_error)?;
+			Ok(Response::new(Code::OK, answer::USERDELETED))
+		}
+	})
+}
+
+fn list(_req: Request) -> CallFnRet {
+	Box::pin(async move {
+		let db = users_db(None);
+		let result: Vec<String> = db.iter().filter_map(Result::ok)
+			.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))
+			.collect();
+		Ok(Response::new(Code::OK, &serde_json::to_string(&result).map_err(into_internal_error)?))
+	})
+}
 
 pub fn init_login(db: Db) -> HashMap<String, CallFn> {
+	let mut result: HashMap<String, CallFn> = HashMap::new();
 	// initialize the users' db
 	users_db(Some(db));
-	let mut result: HashMap<String, CallFn> = HashMap::new();
-	result.insert("join".into(), login_sample);
+	result.insert("join".into(), join);
 	result.insert("list".into(), list);
+	result.insert("auth".into(), auth);
+	result.insert("delete".into(), delete);
 	result
 }
 
