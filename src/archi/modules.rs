@@ -5,7 +5,7 @@ use crate::proto::{ Response, Request };
 
 pub enum Error {
 	NotFound,
-	Internal(String)
+	// Internal(String)
 }
 
 // this result is for the use of '?' in the callback functions 
@@ -51,7 +51,14 @@ impl Modules {
 		if let Some(module) = self.static_modules.get(&module) {
 			match module.get(&req.method) {
 				Some(f) => Ok(f(req).await.unwrap_or_else(|e| e)),
-				None => Err(Error::NotFound)
+				None => {
+					// TODO: maybe a better way
+					if let Some(f) = module.get("default") {
+						Ok(f(req).await.unwrap_or_else(|e| e))
+					} else {
+						Err(Error::NotFound)
+					}
+				}
 			}
 		} else { Err(Error::NotFound) }
 	}

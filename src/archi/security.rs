@@ -2,7 +2,6 @@ use jsonwebtoken::{ encode, EncodingKey, Header, Validation, DecodingKey, decode
 use serde::{ Deserialize, Serialize };
 use std::time::{ Duration, SystemTime, UNIX_EPOCH };
 use hyper::{ Request, Body };
-use crate::proto::{ Response };
 use once_cell::sync::OnceCell;
 /*
 	Access token are used to access api endpoints it live only 10 minutes

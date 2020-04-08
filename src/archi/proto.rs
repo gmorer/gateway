@@ -1,4 +1,3 @@
-use serde::{ Deserialize, Serialize };
 use hyper::{ Body };
 use crate::utils::{ json_error, into_internal_error };
 use crate::security::{ get_username };
@@ -22,7 +21,7 @@ impl Request {
 				// TODO: Remove trailing '/' if present
 				let method = &path[index + 1..];
 				if method.is_empty() {
-					return Err(Response::new(Code::BadRequest, &json_error("Need a method name")))?;
+					return Err(Response::new(Code::BadRequest, json_error("Need a method name")))?;
 				}
 				// TODO: maybe change char '/' by '_' in method
 				( module, method.into() )
@@ -31,11 +30,11 @@ impl Request {
 				if path.is_empty() {
 					( "static".into(), "index.html".into() )
 				} else {
-					return Err(Response::new(Code::NotFound, &json_error("Invalid method name")));
+					return Err(Response::new(Code::NotFound, json_error("Invalid method name")));
 				}
 			}
 		};
-		let username = get_username(&req).map_err(|e| Response::new(Code::BadRequest, &json_error(e)))?;
+		let username = get_username(&req).map_err(|e| Response::new(Code::BadRequest, json_error(e)))?;
 		let ( body_len, body ) = match req.headers().get("Content-Length") {
 			Some( value ) => {
 				let body_len = value.to_str().map_err(into_internal_error)?.parse().map_err(into_internal_error)?;
@@ -78,15 +77,15 @@ pub enum Code {
 	
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Response {
 	code: u16,
 	body_len: u64,
-	body: String
+	body: hyper::Body
 }
 
 impl Response {
-	pub fn new(code: Code, no: &str) -> Self {
+	pub fn new<T>(code: Code, no: T) -> Self where T: Into<Body> {
 		Response {
 			body_len: 54,
 			code: code as u16,

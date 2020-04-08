@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::str;
 use std::collections::HashMap;
 use once_cell::sync::OnceCell;
-use futures::future;
 
 use crate::proto::{ Response, Request, Code };
 use crate::modules::{ CallFnRet, CallFn };
@@ -15,7 +14,6 @@ struct User {
 	password: String
 }
 
-#[allow(dead_code)]
 mod answer {
 	pub const GOODCREDENTIAL: &str = "Good credentials";
 	pub const USERCREATED: &str = "User created";
@@ -38,17 +36,17 @@ fn auth(req: Request) -> CallFnRet {
 	Box::pin(async move {
 		let user: User = match parse_body(req).await {
 			Ok(user) => user,
-			Err(e) => return Ok(Response::new(Code::BadRequest, &json_error(e)))
+			Err(e) => return Ok(Response::new(Code::BadRequest, json_error(e)))
 		};
 		let db = users_db(None);
 		let password = match db.get(&user.username).unwrap_or(None) {
 			Some(d) => d,
-			None => return Ok(Response::new(Code::Unauthorized, &json_error(answer::INVALIDCREDENTIAL)))
+			None => return Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		};
 		if password != user.password {
-			Ok(Response::new(Code::Unauthorized, &json_error(answer::INVALIDCREDENTIAL)))
+			Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		} else {
-			Ok(Response::new(Code::OK, answer::GOODCREDENTIAL))
+			Ok(Response::new(Code::OK, answer::GOODCREDENTIAL.to_string()))
 		}
 	})
 }
@@ -57,14 +55,14 @@ fn join(req: Request) -> CallFnRet {
 	Box::pin(async move {
 		let user: User = match parse_body(req).await {
 			Ok(user) => user,
-			Err(e) => return Ok(Response::new(Code::BadRequest, &json_error(e)))
+			Err(e) => return Ok(Response::new(Code::BadRequest, json_error(e)))
 		};
 		let db = users_db(None);
 		match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(into_internal_error)? {
-			Some(_) => Ok(Response::new(Code::Conflict, &json_error(answer::ALREADYEXIST))),
+			Some(_) => Ok(Response::new(Code::Conflict, json_error(answer::ALREADYEXIST))),
 			None => {
 				db.flush_async().await.map_err(into_internal_error)?;
-				Ok(Response::new(Code::OK, answer::USERCREATED))
+				Ok(Response::new(Code::OK, answer::USERCREATED.to_string()))
 			}
 		}
 	})
@@ -76,15 +74,15 @@ fn delete(req: Request) -> CallFnRet {
 	Box::pin(async move {
 		let user: User = match parse_body(req).await {
 			Ok(user) => user,
-			Err(e) => return Ok(Response::new(Code::BadRequest, &json_error(e)))
+			Err(e) => return Ok(Response::new(Code::BadRequest, json_error(e)))
 		};
 		let db = users_db(None);
 		let password = match db.get(&user.username).unwrap_or(None) {
 			Some(d) => d,
-			None => return Ok(Response::new(Code::Unauthorized, answer::INVALIDCREDENTIAL))
+			None => return Ok(Response::new(Code::Unauthorized, answer::INVALIDCREDENTIAL.to_string()))
 		};
 		if password != user.password {
-			Ok(Response::new(Code::Unauthorized, answer::INVALIDCREDENTIAL))
+			Ok(Response::new(Code::Unauthorized, answer::INVALIDCREDENTIAL.to_string()))
 		} else {
 			db.remove(&user.username).map_err(into_internal_error)?;
 			db.flush_async().await.map_err(into_internal_error)?;
@@ -99,7 +97,7 @@ fn list(_req: Request) -> CallFnRet {
 		let result: Vec<String> = db.iter().filter_map(Result::ok)
 			.map(|(user, _)| String::from(str::from_utf8(&user).unwrap_or("")))
 			.collect();
-		Ok(Response::new(Code::OK, &serde_json::to_string(&result).map_err(into_internal_error)?))
+		Ok(Response::new(Code::OK, serde_json::to_string(&result).map_err(into_internal_error)?))
 	})
 }
 
