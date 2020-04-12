@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::str;
 use std::collections::HashMap;
 use once_cell::sync::OnceCell;
+use argon2::{self, Config};
+use rand::{thread_rng, Rng};
 
 use crate::proto::{ Response, Request, Code };
 use crate::modules::{ CallFnRet, CallFn };
@@ -39,14 +41,13 @@ fn auth(req: Request) -> CallFnRet {
 			Err(e) => return Ok(Response::new(Code::BadRequest, json_error(e)))
 		};
 		let db = users_db(None);
-		let password = match db.get(&user.username).unwrap_or(None) {
+		let hash = match db.get(&user.username).unwrap_or(None) {
 			Some(d) => d,
 			None => return Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		};
-		if password != user.password {
-			Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
-		} else {
-			Ok(Response::new(Code::OK, answer::GOODCREDENTIAL.to_string()))
+		match argon2::verify_encoded(str::from_utf8(hash.as_ref()).map_err(into_internal_error)?, user.password.as_bytes()).map_err(into_internal_error)? {
+			true => Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL))),
+			false => Ok(Response::new(Code::OK, answer::GOODCREDENTIAL.to_string()))
 		}
 	})
 }
@@ -58,7 +59,10 @@ fn join(req: Request) -> CallFnRet {
 			Err(e) => return Ok(Response::new(Code::BadRequest, json_error(e)))
 		};
 		let db = users_db(None);
-		match db.insert(&user.username, user.password.as_bytes().to_vec()).map_err(into_internal_error)? {
+		let mut salt = [0u8; 10];
+		thread_rng().try_fill(&mut salt[..]).map_err(into_internal_error)?;
+		let hash = argon2::hash_encoded(user.password.as_bytes(), &salt, &Config::default()).map_err(into_internal_error)?;
+		match db.insert(user.username.as_bytes(), hash.as_bytes()).map_err(into_internal_error)? {
 			Some(_) => Ok(Response::new(Code::Conflict, json_error(answer::ALREADYEXIST))),
 			None => {
 				db.flush_async().await.map_err(into_internal_error)?;
