@@ -1,5 +1,5 @@
-use hyper::{Body, Request, Response, Server};
-use hyper::service::{make_service_fn, service_fn};
+use hyper::{ Body, Request, Response, Server, Method };
+use hyper::service::{ make_service_fn, service_fn };
 
 mod utils;
 mod static_modules;
@@ -26,6 +26,17 @@ async fn shutdown_signal() {
 // TODO handle content encoding based on the Accept header comming
 async fn handle_req(modules: modules::Modules, req: Request<Body>) -> Result<Response<Body>> {
 	// if request is a GET and is asking for html, send static/index.html (Care fore the infinit loop)
+	// CORS
+	if req.method() == Method::OPTIONS {
+		return Ok(hyper::Response::builder()
+			.status(200)
+			.header("Access-Control-Allow-Origin", "*")
+			.header("Access-Control-Allow-Credentials", "true")
+			.header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			.body(Body::empty())
+			.unwrap()
+		);
+	}
 	match proto::Request::froom(req) {
 		Ok((module, req)) => Ok(modules.call(module, req).await.unwrap_or(proto::Response::new(proto::Code::NotFound, "404 not found")).into()),
 		Err(res) => Ok(res.into())

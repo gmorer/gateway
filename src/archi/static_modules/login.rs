@@ -10,10 +10,14 @@ use crate::proto::{ Response, Request, Code };
 use crate::modules::{ CallFnRet, CallFn };
 use crate::utils::{ parse_body, into_internal_error, json_error };
 
+// temporary, in wait of the mentoring implementation
+const MENTORING_KEY: &str = "saitama";
+
 #[derive(Serialize, Deserialize, Debug)]
 struct User {
 	username: String,
-	password: String
+	password: String,
+	mentoring: Option<String>
 }
 
 mod answer {
@@ -22,6 +26,8 @@ mod answer {
 	pub const USERDELETED: &str = "User deleted";
 	pub const INVALIDCREDENTIAL: &str = "Invalid credentials";
 	pub const ALREADYEXIST: &str = "Username already exist";
+	pub const MENTORING_KEY_NOT_PRESENT: &str = "Mentoring key not present";
+	pub const INVALID_MENTORING_KEY: &str = "Invalid mentoring key";
 }
 
 // users_db(None) to get the db instance and users_db(db) to initalize it when not initilized
@@ -46,8 +52,8 @@ fn auth(req: Request) -> CallFnRet {
 			None => return Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		};
 		match argon2::verify_encoded(str::from_utf8(hash.as_ref()).map_err(into_internal_error)?, user.password.as_bytes()).map_err(into_internal_error)? {
-			true => Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL))),
-			false => Ok(Response::new(Code::OK, answer::GOODCREDENTIAL.to_string()))
+			true => Ok(Response::new(Code::OK, answer::GOODCREDENTIAL.to_string())),
+			false => Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		}
 	})
 }
@@ -58,6 +64,13 @@ fn join(req: Request) -> CallFnRet {
 			Ok(user) => user,
 			Err(e) => return Ok(Response::new(Code::BadRequest, json_error(e)))
 		};
+		if let Some(mentoring) = user.mentoring {
+			if mentoring != MENTORING_KEY {
+				return Ok(Response::new(Code::BadRequest, json_error(answer::INVALID_MENTORING_KEY)));
+			}
+		} else {
+			return Ok(Response::new(Code::BadRequest, json_error(answer::MENTORING_KEY_NOT_PRESENT)));
+		}
 		let db = users_db(None);
 		let mut salt = [0u8; 10];
 		thread_rng().try_fill(&mut salt[..]).map_err(into_internal_error)?;
