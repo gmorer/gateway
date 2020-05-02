@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Container, TextField, Button, Grid, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
 import { fillEntry, enterSubmit, apiCall } from './utils'
 
-const login = (username, password) => async _ => {
+const login = (username, password, setSessionUser) => async _ => {
 	try {
-		let res = await apiCall({ uri: "auth/auth", body: { username, password } });
-		console.log(res);
+		let { acces_token, refresh_token } = await apiCall({ uri: "auth/auth", body: { username, password } });
+		localStorage.setItem("refresh_token", refresh_token);
+		sessionStorage.acces_token = acces_token;
+		setSessionUser(username);
 	} catch (e) {
-		console.log(e)
+		console.error(e)
 	}
 }
 
@@ -24,7 +26,7 @@ const register = (username, password, mentoring, setModal) => async _ => {
 }
 
 
-const LoginPage = () => {
+const LoginPage = ({ setSessionUser }) => {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 	const [mentoring, setMentoring] = useState('');
@@ -55,7 +57,7 @@ const LoginPage = () => {
 						<TextField required label="Passsword" variant="outlined" value={password} onChange={fillEntry(setPassword)} type="password" onKeyPress={enterSubmit(login(username, password))} />
 					</Grid>
 					<Grid item>
-						<Button variant="contained" color="primary" onClick={login(username, password)} >Login</Button>
+						<Button variant="contained" color="primary" onClick={login(username, password, setSessionUser)} >Login</Button>
 					</Grid>
 					<Grid item>
 						<Button variant="contained" color="secondary" onClick={toggleModal(setModal)} >Register</Button>

@@ -9,6 +9,7 @@ use rand::{thread_rng, Rng};
 use crate::proto::{ Response, Request, Code };
 use crate::modules::{ CallFnRet, CallFn };
 use crate::utils::{ parse_body, into_internal_error, json_error };
+use crate::security::{ create_token, TokenType };
 
 // temporary, in wait of the mentoring implementation
 const MENTORING_KEY: &str = "saitama";
@@ -21,7 +22,6 @@ struct User {
 }
 
 mod answer {
-	pub const GOODCREDENTIAL: &str = "Good credentials";
 	pub const USERCREATED: &str = "User created";
 	pub const USERDELETED: &str = "User deleted";
 	pub const INVALIDCREDENTIAL: &str = "Invalid credentials";
@@ -52,7 +52,11 @@ fn auth(req: Request) -> CallFnRet {
 			None => return Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		};
 		match argon2::verify_encoded(str::from_utf8(hash.as_ref()).map_err(into_internal_error)?, user.password.as_bytes()).map_err(into_internal_error)? {
-			true => Ok(Response::new(Code::OK, answer::GOODCREDENTIAL.to_string())),
+			true => {
+				let refresh = create_token(user.username.clone(), TokenType::RefreshToken);
+				let access = create_token(user.username, TokenType::AccessToken);
+				Ok(Response::new(Code::OK, format!(r##"{{"access_token": "{}","refresh_token": "{}"}}"##, access, refresh)))
+			},
 			false => Ok(Response::new(Code::Unauthorized, json_error(answer::INVALIDCREDENTIAL)))
 		}
 	})

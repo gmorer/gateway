@@ -100,6 +100,9 @@ impl Into<hyper::Response<Body>> for Response {
 	fn into(self) -> hyper::Response<Body> {
 		hyper::Response::builder()
 			.status(self.code)
+			.header("Access-Control-Allow-Origin", "*")
+			.header("Access-Control-Allow-Credentials", "true")
+			.header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			.body(Body::from(self.body)).unwrap_or(
 				hyper::Response::new("Internal error when writing response".into())
 			)
