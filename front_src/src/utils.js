@@ -21,7 +21,7 @@ export const apiCall = async options => {
 		if (!!e.error && !!e.error.error) {
 			throw e.error.error
 		} else {
-			throw e.mesage
+			throw e.message
 		}
 	}
 }
